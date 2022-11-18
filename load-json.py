@@ -12,7 +12,7 @@ table = db["dblp"]
 # load file line by line
 with open('dblp-ref-1m.json') as file:
   for obj in file:
-    file_data = json.loads(obj) 
+    file_data = json.loads(obj)
     table.insert_one(file_data)
 
 # index
