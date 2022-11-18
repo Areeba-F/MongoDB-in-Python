@@ -26,6 +26,7 @@ print(list(db.articles_coll.index_information()))
 def search_article(keywords_str):
   # matches are in any of title, authors, abstract, venue and year fields
   results = db.articles_coll.find({"$text": {"$search": "{}".format(keywords_str)}})
+  
   return results
 
 def main():
