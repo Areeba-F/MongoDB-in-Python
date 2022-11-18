@@ -16,7 +16,7 @@ with open('dblp-ref-1m.json') as file:
     table.insert_one(file_data)
 
 # index
-db.table.create_index( [("$**", TEXT)])
-db.table.create_index("year")
+table.create_index( [("$**", TEXT)])
+table.create_index("year")
 
 print("done")
