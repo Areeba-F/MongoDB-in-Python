@@ -18,28 +18,43 @@ with open('dblp-ref-10.json') as file:
     file_data = json.loads(obj) 
     articles_coll.insert_one(file_data)
 
-db.articles_coll.create_index([("$**", TEXT)])
-#db.articles_coll.create_index([('abstract', 'text')], name='article_abstract')
-db.articles_coll.create_index("year")
+# Inserts a new field: the $year field converted to string
+articles_coll.update_many(
+  { },
+  [
+    {"$set": {"str_year": { "$toString": "$year" }}}
+  ]
+)
+#articles_coll.create_index([("$**", TEXT)], default_language = "none") # Now text index will also apply to the str_year field
+articles_coll.create_index([("title", TEXT), ("authors", TEXT), ("abstract", TEXT), ("venue", TEXT), ("year", TEXT)], default_language = "none")
 print(list(db.articles_coll.index_information()))
 
-def search_article(keywords_str):
+def search_article(keywords):
   # matches are in any of title, authors, abstract, venue and year fields
-  results = db.articles_coll.find({"$text": {"$search": "{}".format(keywords_str)}})
+  # All keywords must be found in a match, thus each keyword is quoted
+  keyword_str = ""
+  for word in keywords:
+    keyword_str += "\"{}\" ".format(word)
+
+  print(keyword_str)
   
+  #FIX me, have to somehow exclude the references field from the search pool
+  results = db.articles_coll.find({"$text": {"$search": "{}".format(keyword_str)}})
   return results
 
 def main():
-  
-  keywords_str = "purpose develop"
-  matches = search_article(keywords_str)
-  
-  # for each matching article, display the id, the title, the year and the venue fields.
-  for art in matches:
-    print("ID:" + art["id"] + "    TITLE:" + art["title"] + "    YEAR:" + str(art["year"]) + "    VENUE:" + art["venue"])
 
+  ### 1 - functionality: search for articles 
+  keywords = input("Search for articles based on keyword(s): ").split()
+  matches = search_article(keywords)
+  result_num = 1
+  for art in matches:
+    print("---" + str(result_num) + "---")
+    print("\tID: " + art["id"])
+    print("\tTITLE: " + art["title"])
+    print("\tYEAR: " + str(art["year"]))
+    print("\tVENUE: " + art["venue"] + "\n")
+    result_num += 1
 
 if __name__ == "__main__":
   main()
-#results = articles_coll.find_one({"year":2009})
-#print(results)
