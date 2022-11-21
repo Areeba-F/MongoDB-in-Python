@@ -27,8 +27,10 @@ articles_coll.update_many(
 )
 #articles_coll.create_index([("$**", TEXT)], default_language = "none") # Now text index will also apply to the str_year field
 articles_coll.create_index([("title", TEXT), ("authors", TEXT), ("abstract", TEXT), ("venue", TEXT), ("year", TEXT)], default_language = "none")
+articles_coll.create_index("id")
 print(list(db.articles_coll.index_information()))
 
+### 1 - functionality: search for articles
 def search_article(keywords):
   # matches are in any of title, authors, abstract, venue and year fields
   # All keywords must be found in a match, thus each keyword is quoted
@@ -38,23 +40,90 @@ def search_article(keywords):
 
   print(keyword_str)
   
-  #FIX me, have to somehow exclude the references field from the search pool
   results = db.articles_coll.find({"$text": {"$search": "{}".format(keyword_str)}})
   return results
 
-def main():
+def article_display_more_info(article):
+  print("\n")
+  for key in article.keys():
+    if(key == "references"):
+      # Query
+      refs = list(articles_coll.find({"id": {"$in" : article[key]}})) #is this using the index correctly?
+      # Output references
+      ref_num = 1
+      for i in range(0, len(refs)):
+        print("\t---Reference #" + str(ref_num) + "---")
+        print("\tid: " + refs[i]["id"])
+        print("\ttitle: " + refs[i]["title"])
+        print("\tyear: " + str(refs[i]["year"]) + "\n")
+        ref_num += 1
+    else:
+      print(str(key) + ": " + str(article[key]))
 
-  ### 1 - functionality: search for articles 
+def search_article_menu():
   keywords = input("Search for articles based on keyword(s): ").split()
-  matches = search_article(keywords)
+  matches = list(search_article(keywords))
+  #matches = search_article(keywords)
+  #matches1 = search_article(keywords) #a separate cursor works, but seems hacky and may not be reliable...
+  #print(type(matches[0]))
+  #print(matches[0])
   result_num = 1
-  for art in matches:
-    print("---" + str(result_num) + "---")
-    print("\tID: " + art["id"])
-    print("\tTITLE: " + art["title"])
-    print("\tYEAR: " + str(art["year"]))
-    print("\tVENUE: " + art["venue"] + "\n")
+
+  # Search summary
+  for i in range(0, len(matches)):
+    print("\n---" + str(result_num) + "---")
+    print("id: " + matches[i]["id"])
+    print("title: " + matches[i]["title"])
+    print("year: " + str(matches[i]["year"]))
+    print("venue: " + matches[i]["venue"])
     result_num += 1
+  
+  """
+  for art in matches:
+    print("\n---" + str(result_num) + "---")
+    print("id: " + art["id"])
+    print("title: " + art["title"])
+    print("year: " + str(art["year"]))
+    print("venue: " + art["venue"])
+    result_num += 1
+  """
+
+  # More info
+  article_selection = int(input("Enter an article's number for more info, or \"0\" to return: "))
+  if(article_selection == 0):
+    return
+  #print(matches.next())
+  #for art in matches: 1
+  #matches1.skip(article_selection-1) #doesn't work on a cursor that has already iterated
+  #print(matches1.next())
+  article_display_more_info(matches[int(article_selection) - 1])
+
+### 2 - functionality: search for authors
+def search_authors(keyword):
+  """
+  pipeline = [
+    {
+      "$group":
+        {
+          "_id": "authors",
+          "count_": {}
+        }
+    }
+  ]
+  """
+  results = db.articles_coll.find({"$text": {"$search": "{}".format(keyword)}})
+  total_publications = 0
+  print("search for author...")
+
+def search_authors_menu():
+  keyword = input("Enter one keyword to search for authors: ")
+  results = search_authors(keyword)
+
+def main():
+  print("---Main Menu---\n1. Search for Articles")
+  main_menu_selection = input("Select an Option: ")
+  if(main_menu_selection == "1"):
+    search_article_menu()
 
 if __name__ == "__main__":
   main()
