@@ -4,7 +4,7 @@ from pymongo import TEXT
 
 # Beginning of Phase 2. Don't know how to use pre-existing DBs so I made a new one again
 
-client = MongoClient('mongodb://localhost:27018')
+client = MongoClient('mongodb://localhost:27016')
 
 client.drop_database("proj3")
 
@@ -12,7 +12,7 @@ db = client["proj3"]
 
 table = db["Table"]
 
-with open('dblp-ref-1m.json') as file:
+with open('dblp-ref-1k.json') as file:
    for obj in file:
      file_data = json.loads(obj) 
      table.insert_one(file_data)
@@ -27,14 +27,6 @@ table.create_index("year")
 numArticles = 10
 print("DONE")
 
-part2 = table.find(
-    {
-    "$text" : 
-        {"$search" : "international"}}
-    )
-
-for i in part2:
-    print(i)
 
 part3 = table.aggregate(
     [{
@@ -42,7 +34,15 @@ part3 = table.aggregate(
         {"_id" : "$venue",  
          "Number of Articles in Venue" : {"$sum" : 1}
         }},
-      {"$sort" :{"Number of Articles in Venue":-1,}},
+        
+        { "$lookup": {
+          "from": "Table",
+          "localField": "reference",
+          "foreignField": "id",
+          "as": "number of references"
+        }},
+    
+      {"$sort" :{"number of references":-1,}},
       { "$limit" : numArticles }
     ])
 
