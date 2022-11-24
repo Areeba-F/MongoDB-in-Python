@@ -229,9 +229,9 @@ def top_venues():
 def insert_article():
     uniqueIdFound = False
     while uniqueIdFound == False:
-        id = input("Enter a unique id: ")
+        Userid = input("Enter a unique id: ")
 
-        found_ids = dblp.find_one({"id":"id"})
+        found_ids = dblp.find_one({"id":Userid})
 
         if found_ids != None:
             print("That id is already taken.")
@@ -255,7 +255,7 @@ def insert_article():
             print("Please enter a valid year.")
 
 
-    dblp.insert_one({"id":id, "title": title, "authors": authorsList, "year": year, "abstract": "", "venue": "", "references": [], "n_citations": 0})
+    dblp.insert_one({"id":Userid, "title": title, "authors": authorsList, "year": year, "abstract": "", "venue": "", "references": [], "n_citations": 0})
 
     found = dblp.find_one({"title":title})
     print(found)
