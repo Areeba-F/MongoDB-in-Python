@@ -3,21 +3,17 @@ from pymongo import MongoClient
 from pymongo import TEXT
 
 # Phase one stuff
-"""
-client = MongoClient('mongodb://localhost:27017')
-
-db = client["proj2"]
-
+'''
+client = MongoClient('mongodb://localhost:27016')
+db = client["291db"]
 # Create a collection called "Table", remove anything already inside and all existing indexes, if any 
 dblp = db["dblp"]
 dblp.delete_many({})
 db.dblp.drop_indexes()
-
-with open('dblp-ref-10.json') as file:
+with open('dblp-ref-1m.json') as file:
   for obj in file:
     file_data = json.loads(obj) 
     dblp.insert_one(file_data)
-
 # Inserts a new field: the $year field converted to string
 dblp.update_many(
   { },
@@ -25,11 +21,12 @@ dblp.update_many(
     {"$set": {"str_year": { "$toString": "$year" }}}
   ]
 )
+
 #dblp.create_index([("$**", TEXT)], default_language = "none") # Now text index will also apply to the str_year field
 dblp.create_index([("title", TEXT), ("authors", TEXT), ("abstract", TEXT), ("venue", TEXT), ("str_year", TEXT)], default_language = "none")
 dblp.create_index("id")
 print(list(db.dblp.index_information()))
-"""
+'''
 # Beginning of Phase 2
 port_num = input("Enter the port number the MongoDB server is running: ")
 client = MongoClient("mongodb://localhost:{}".format(port_num))
@@ -162,15 +159,121 @@ def search_authors_menu():
     return
   author_display_publications(author_matches[author_selection - 1])
 
+def top_venues():
+
+    numArticles = input("How many top venues do you want to display? ")
+    numArticles = int(numArticles)
+
+    part3 = dblp.aggregate(
+    [
+        { "$match" : {
+          "venue": {"$ne":""}
+        }},
+      
+        { "$lookup": {
+          "from": "dblp",
+          "localField": "id",
+          "foreignField": "references",
+          "as": "articlesReferenced"
+        }},
+
+        { "$unwind": "$articlesReferenced" },
+         
+        { "$project": {
+          "venue":1, "articlesReferenced.id":1
+        }},
+
+        { "$group" : {
+          "_id" : "$venue",
+          "ids_referencing_venue": {"$addToSet": "$articlesReferenced.id"},
+        }},
+         
+        { "$project": {
+          "venue":1, "referenceCount": {"$size": "$ids_referencing_venue"}
+        }},
+
+        { "$sort" : {
+          "referenceCount":-1,
+        }},
+
+        { "$limit" : numArticles }
+    ])
+    article_num = 1
+
+    venueCount = dblp.aggregate(
+    [
+      { "$group" : {
+          "_id" : "$venue",
+          "Number of Articles in Venue" : {"$sum" : 1}
+        }},
+        { "$sort" : {
+          "Number of Articles in Venue":1,
+        }}
+    ])
+
+    listvenue = list(venueCount)
+    listPart3 = list(part3)
+
+    print("Top Venues:")
+    for i in range(0, len(listPart3)):
+
+        print("\n---" + str(article_num) + "---")
+        print("Venue: " + listPart3[i]['_id'])
+        for j in range(0, len(listvenue)):
+            if listvenue[j]['_id'] == listPart3[i]['_id']:
+                print("Number of Articles in Venue: " + str(listvenue[j]['Number of Articles in Venue']))
+        print("Number of Articles Referenced: " + str(listPart3[i]['referenceCount']))
+        print()
+        article_num = article_num + 1
+
+def insert_article():
+    uniqueIdFound = False
+    while uniqueIdFound == False:
+        id = input("Enter a unique id: ")
+
+        found_ids = dblp.find_one({"id":"id"})
+
+        if found_ids != None:
+            print("That id is already taken.")
+
+        else:
+            uniqueIdFound = True
+
+    title = input("Enter a title: ")
+
+    authors = input("Enter a list of authors (seperated by commas)")
+    authorsList = authors.split(",")
+
+    validYearFound = False
+    while validYearFound == False:
+        year = input("Enter a year: ")
+
+        try:
+            year = int(year)
+            validYearFound = True
+        except:
+            print("Please enter a valid year.")
+
+
+    dblp.insert_one({"id":id, "title": title, "authors": authorsList, "year": year, "abstract": "", "venue": "", "references": [], "n_citations": 0})
+
+    found = dblp.find_one({"title":title})
+    print(found)
+
+
 def main():
   while(True):
-    print("---Main Menu---\n1. Search for Articles")
+    print("---Main Menu---\n1. Search for Articles \n2. Search for Authors \n3. Get the top venues \n4. Insert new article")
     main_menu_selection = input("Select an Option: ")
     if(main_menu_selection == "1"):
       search_article_menu()
     if(main_menu_selection == "2"):
       #under development...
       search_authors_menu()
+    if(main_menu_selection == "3"):
+      top_venues()
+    if(main_menu_selection == "4"):
+      insert_article()
   
 if __name__ == "__main__":
   main()
