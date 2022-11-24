@@ -1,6 +1,7 @@
 import json
 import timeit
 import os
+import pymongo
 from pymongo import MongoClient
 from pymongo import TEXT
 
@@ -48,6 +49,8 @@ def main():
   id_index_st = timeit.default_timer()
   dblp.create_index("id")
   id_index_elapsed = timeit.default_timer() - id_index_st
+
+  dblp.create_index([("references", pymongo.DESCENDING)])
   
   #debug
   print(list(db.dblp.index_information()))
